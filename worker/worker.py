@@ -7,7 +7,6 @@ from typing import Any
 
 import psycopg2
 import redis
-import requests
 
 PG_DSN = (
     f"host={os.environ['POSTGRES_HOST']} "
@@ -20,7 +19,6 @@ REDIS_HOST = os.environ["REDIS_HOST"]
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 REDIS_PASSWORD = os.getenv("REDIS_PASSWORD") or None
 REDIS_QUEUE = os.getenv("REDIS_QUEUE", "trivy_scan_jobs")
-REPORT_WEBHOOK_URL = os.getenv("REPORT_WEBHOOK_URL", "").strip()
 
 redis_client = redis.Redis(
     host=REDIS_HOST,
@@ -102,15 +100,6 @@ def run_trivy(image: str) -> tuple[dict[str, int], dict[str, Any]]:
     return summary, report
 
 
-def send_report(payload: dict[str, Any]):
-    if not REPORT_WEBHOOK_URL:
-        return
-    try:
-        requests.post(REPORT_WEBHOOK_URL, json=payload, timeout=10)
-    except Exception as exc:
-        print(f"Webhook delivery warning: {exc}")
-
-
 def process_job(raw_msg: str):
     data = json.loads(raw_msg)
     job_id = data["job_id"]
@@ -120,11 +109,8 @@ def process_job(raw_msg: str):
     try:
         summary, report = run_trivy(image)
         update_status(job_id, "completed", summary=summary, report=report)
-        send_report({"job_id": job_id, "image": image, "status": "completed", "summary": summary})
     except Exception as exc:
         update_status(job_id, "failed", error_message=str(exc))
-        send_report({"job_id": job_id, "image": image, "status": "failed", "error": str(exc)})
-
 
 def main():
     print(f"Worker started. Listening on Redis queue '{REDIS_QUEUE}'...")
