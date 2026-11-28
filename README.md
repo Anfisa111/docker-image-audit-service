@@ -69,13 +69,13 @@ docker compose --env-file /root/docker-image-audit-service/.env logs --tail=50
    ```
 2. Поставить образ на сканирование (например, `alpine:3.19` или `debian:bookworm-slim`):
    ```bash
-   curl -s -X POST http://139.100.194.107:8000 \
+   curl -s -X POST http://139.100.194.107:8000/scans \
      -H "Content-Type: application/json" \
      -d '{"image":"alpine:3.19"}'
    ```
 3. Проверить статус и результат по `id`:
    ```bash
-   curl -s http://139.100.194.107:8000/<SCAN_ID>
+   curl -s http://139.100.194.107:8000/scans/<SCAN_ID>
    ```
 4. Проверить запись в PostgreSQL (таблица `scan_jobs` с колонкой `image_name`):
    ```sql
